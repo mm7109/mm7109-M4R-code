@@ -1,0 +1,420 @@
+def sudoku(n):
+    "Returns a graph on n**2 x n**2 vertices representing a sudoku (n is the size of the side of the sub-grids)"
+    G=Graph()                       
+    
+    for L1 in range(n**4):
+        G.add_vertices([L1])        #G is now a graph w vertices 0 to n**4 - 1 and no edges
+    
+    for L2 in range(n**2):                            #Cycle through the rows
+        for L3 in range(n**2):                           #Cycle through all elts in the row
+            for L4 in range(n**2):                       #Cycle through all elts in the row again
+                u=((n**2)*L2)+L3
+                if (u+L4)<((L2+1)*(n**2)):
+                    v=u+L4
+                else:
+                    v=u+L4-(n**2)
+                G.add_edge(u,v)                    #Now we have the correct vertices between elts of each row
+                    
+    for M2 in range(n**2):                            #Cycle through the columns
+        for M3 in range(n**2):                            #Cycle through all elts in the col
+            for M4 in range(n**2):                        #Cycle through all elts in the col again
+                    x=(M2)+(n**2)*M3
+                    if (x+(n**2)*M4)<(n**4)-(n**2)+M2+1:
+                        y=x+(n**2)*M4
+                    else:
+                        y=(x+(n**2)*M4)-(n**4)
+                    G.add_edge(x,y)                    #Now we have the correct vertices between elts of each column
+    
+    for N2 in range(n**2):                                            #Cycle through sub-grids
+        S=list()
+        for N3 in range(n):                                            #Cycle through rows in
+            for N4 in range(n):                                        #Cycle through columns
+                elt=(((N2-(N2%n))/n)*(n**3))+((N2%n)*n)+(n**2)*N3+N4    #Does floor() work instead?
+                #The first part ((N2-(N2%n))/n)*(n**3))+((N2%n)*n) identifies which subgrid we're in (first which 'row' of subgrids, then which subgrid. Then which (n**2)*N3 tells us which row of the subgrid we're in and finally N4 gives us the column of that row of that subgrid
+                S.append(elt)
+        for s in S:
+            for t in S:
+                G.add_edge(s,t)                         #Finally, we've inserted the edges between elts in the same sub-grid   
+    return G
+
+#####################################################################################
+
+
+def kakuro():
+    "Returns the graph, G, of a given kakuro with given cross-sum clues"
+    
+    G=Graph()
+    
+    for L1 in range(12):
+        G.add_vertices([L1])
+    
+    G.add_edge(0,1)
+    G.add_edge(2,3)
+    G.add_edge(2,4)
+    G.add_edge(2,5)
+    G.add_edge(3,4)
+    G.add_edge(3,5)
+    G.add_edge(4,5)
+    G.add_edge(6,7)
+    G.add_edge(6,8)
+    G.add_edge(6,9)
+    G.add_edge(7,8)
+    G.add_edge(7,9)
+    G.add_edge(8,9)
+    G.add_edge(10,11)
+    G.add_edge(2,6)
+    G.add_edge(0,3)
+    G.add_edge(0,7)
+    G.add_edge(0,10)
+    G.add_edge(3,7)
+    G.add_edge(3,10)
+    G.add_edge(7,10)
+    G.add_edge(1,4)
+    G.add_edge(1,8)
+    G.add_edge(1,11)
+    G.add_edge(4,8)
+    G.add_edge(4,11)
+    G.add_edge(8,11)
+    G.add_edge(5,9)
+    
+    return G
+
+#####################################################################################
+
+def proper_col(G,n,M):
+    "Takes a Graph, G, integer, n, and list, M, and returns a list of dictionaries, each of which describes a proper (n**2)-colouring of G given conditions in list M"
+    
+    N=G.num_verts()    
+    k=n**2        #The number of colours is equal to the number of cells in a subgrid; n**2
+    F.<c>=CyclotomicField(k)
+    R=PolynomialRing(F,N,"x",order='deglex')
+    
+    I=list()
+    for i in range(N):
+        f=((R.gen(i))^k)-1
+        I.append(f)
+    
+    Ink=R.ideal(I)                    #The ideal Ink from Hillar, it corresponds to the possible colourings of G.
+    
+    a=G.num_edges()
+    E=G.edges()
+    J=list()
+    for i in range(a):    
+        F=E[i]
+        F0=F[0]
+        F1=F[1]
+        j=R.zero()
+        for g in range(k):
+            j1=(R.gen(F0)^(k-1-g))*(R.gen(F1)^g)
+            j=j+j1
+        J.append(j)
+    
+    Condcell=list()    #This will be a list of tuples (cell,colour) representing the conditions, it's an useful alternative representation
+    CellsL=list()       #A list of the cells (by cell number) that have conditions on them
+    ColL=list()         #The list of colours used in the conditions
+    for M1 in M:
+        cell=(M1[0]*(n**2))+M1[1]
+        Condcell.append((cell,M1[2]))
+        CellsL.append(cell)
+        ColL.append(M1[2])
+    Cells=set(CellsL)    #Cast cells as a set because in Sage sets are built from iterables like lists   
+    Col=set(ColL)
+    UnColL=list()
+    for M0 in range(k):
+        UnColL.append(M0)
+    UnCol=set(UnColL)
+    UnCol.difference_update(Col)    #Leaves UnCol with the unused colours from the conditions
+    print "Condcell =",Condcell
+    print "Cells =",Cells
+    print "Col =",Col
+    print "UnCol =",UnCol
+        
+    if len(M)!=0:
+        for i in range(len(M)):
+            J.append(R.gen((Condcell[i])[0])-(c**((Condcell[i])[1])))
+    else:
+        for i in range(n):
+            for j in range(n):
+                J.append(R.gen(j+((n**2)*i))-(c**(j+(n*i))))    #If no conditions, colour top-left subgrid 0,...,n**4 - 1
+        
+    SgridL=list()
+    for M3 in M:
+        bandno=(M3[0]-(M3[0]%n))/n
+        print "bandno =",bandno
+        stackno=(M3[1]-(M3[1]%n))/n
+        print "stackno =",stackno
+        sgridTL=bandno*(n**3)+stackno*n     #use band and stack numbers to get Top-Left cell no. of subgrid holding the cell with the condition on it
+        print "sgridTL =",sgridTL
+        SgridL.append(sgridTL)
+    print "SgridL =",SgridL
+    Sgrid=set(SgridL)        #So Sgrid is the set of sub-grids that contain a cell with a condition on it
+    print "Sgrid =",Sgrid
+    
+    if len(Sgrid)==1:
+        sgridno=Sgrid.pop()    #let sgridno be the one and only elt of Sgrid; it identifies the subgrid we want to fill by its Top-Left cell
+        print "sgridno =",sgridno
+        ScellsL=list()
+        for M4 in range(n):
+            for M5 in range(n):
+                ScellsL.append(sgridno+(M4*(n**2))+M5)
+        Scells=set(ScellsL)
+        print "Scells =",Scells
+        Scells2=Scells.difference(Cells)    #Gives us the uncoloured cells in our subgrid
+        print "Scells2 =",Scells2
+        for i in range(len(Scells2)):
+            colour=UnCol.pop()
+            cellTemp=Scells2.pop()
+            print "cellTemp =",cellTemp
+            J.append(R.gen(cellTemp)-(c**(colour)))    #Colours the cells without conditions, with a random unused colour
+    print J
+                
+    J1=R.ideal(J)
+    IGk=Ink+J1                    #The ideal IGk from Hillar, its variety gives the proper colourings of G.
+    V=IGk.variety()
+    return V
+
+#######################################################################################
+
+def gencol(G,k,M):
+    "Takes a graph G, a number of colours k, and a list of conditions M, and returns a list of dictionaries containing all proper colourings of G"
+    N=G.num_verts()    
+    F.<c>=CyclotomicField(k)
+    R=PolynomialRing(F,N,"x",order='deglex')
+    
+    I=list()
+    for i in range(N):
+        f=((R.gen(i))^k)-1
+        I.append(f)
+    
+    Ink=R.ideal(I)                    #The ideal Ink from Hillar, it corresponds to the possible colourings of G.
+    
+    a=G.num_edges()
+    E=G.edges()
+    J=list()
+    for i in range(a):    
+        F=E[i]
+        F0=F[0]
+        F1=F[1]
+        j=R.zero()
+        for g in range(k):
+            j1=(R.gen(F0)^(k-1-g))*(R.gen(F1)^g)
+            j=j+j1
+        J.append(j)
+        
+    for M0 in M:
+        J.append((R.gen(M0[0]))-(c**(M0[1])))    #Add in the conditions form genCond()
+        
+    J1=R.ideal(J)
+    IGk=Ink+J1                    #The ideal IGk from Hillar, its variety gives the proper colourings of G.
+    V=IGk.variety()
+    return V
+
+######################################################################################
+
+def KakuroCol(G):
+    "Takes a graph, G, of a kakuro and colours it properly"
+    N=G.num_verts() 
+    k=9   
+    F.<c>=CyclotomicField(k)        #Since we can only use 1 to 9 in the kakuro
+    R=PolynomialRing(F,N,"x",order='deglex')
+    
+    I=list()
+    for i in range(N):
+        f=((R.gen(i))^k)-1            #Ensures 9th roots of unity
+        I.append(f)
+
+    Ink=R.ideal(I)                    #The ideal Ink from Hillar, it corresponds to the possible colourings of G.
+    
+    a=G.num_edges()
+    E=G.edges()
+    J=list()
+    for i in range(a):    
+        F=E[i]
+        F0=F[0]
+        F1=F[1]
+        j=R.zero()
+        for g in range(k):
+            j1=(R.gen(F0)^(k-1-g))*(R.gen(F1)^g)
+            j=j+j1
+        J.append(j)
+        
+    J.append(R.gen(0)*R.gen(1)-c**5)
+    J.append(R.gen(2)*R.gen(3)*R.gen(4)*R.gen(5)-c**8)
+    J.append(R.gen(6)*R.gen(7)*R.gen(8)*R.gen(9)-1)
+    J.append(R.gen(10)*R.gen(11)-c**3)
+    J.append(R.gen(2)*R.gen(6)-c**7)
+    J.append(R.gen(0)*R.gen(3)*R.gen(7)*R.gen(10)-c**8)
+    J.append(R.gen(1)*R.gen(4)*R.gen(8)*R.gen(11)-c**5)
+    J.append(R.gen(5)*R.gen(9)-c**5)
+            
+    J1=R.ideal(J)
+    IGk=Ink+J1                    #The ideal IGk from Hillar, its variety gives the proper colourings of G.
+    V=IGk.variety()
+    return V
+
+#####################################################################################
+
+def Orbits(L,N):
+    "Takes a list L whose elements are lists of tuples representing elements of a given group (in our case a permutation group), and a number N which is the size of the set on which the group acts, and calculates the sum of the number of elements fixed by each group element's action"
+    count2=0     
+    for L1 in L:
+        count1=0
+        for n in range(N):
+            if len(L1.orbit(n+1))==1:
+                count1=count1+1        #This tells us how many vertices are fixed by a given elt. of the automorphism gp.
+        count2=count2+count1           #Sum this over all elts. of the automorph. gp.
+    return(count2)
+
+#####################################################################################
+
+def col_uptoiso(G,V,k):
+    "Takes a Graph, G, the list of varieties that represents all proper colourings (taking into account given conditions) of G and the number of colours in the colouring, and outputs a list of proper colourings up to isomorphism"
+    
+    vert=G.num_verts()    
+    F.<c>=CyclotomicField(k)
+    R=PolynomialRing(F,vert,"x",order='deglex')
+    H=G.automorphism_group()            #Here, inserting translation=True gives a dictionary showing how vertices have been handled to produce permutation group elts.
+    
+    elements=H.list()
+    for h in elements:
+        print h
+    #fix=Orbits(elements,vert)
+    #orb=fix/len(elements)
+    #print orb
+    Q=H.gens()
+    print Q
+        
+    map=dict()
+    for i in range(k):
+        map[c**i]=i+1        #Maps each kth-complex root (colour) to an actual integer between 1 and k
+    for v in V:
+        for P in v.iterkeys():
+            v[P]=map[v[P]]    #Changes each dictionary representing a colouring of G so that the colours are in the range [1,k]
+                
+    M=list()
+    N=list()
+    K=list()
+    for j in range(vert):
+        K.append((V[0])[R.gen(j)])
+    M.append(K)
+    N.append(V[0])
+                                  #M is the list of k-colourings representing the non-isomoprhic colourings, we put the first colouring in manually
+        
+    V.remove(V[0]) #as we've already got this colouring in M
+    for v in V:
+        for h in elements: 
+            l=list()
+            ints=[(x+1) for x in range(vert)]
+            authelp=h(ints)
+            M1=list()
+            N1=list()
+            l=[v[R.gen(i)] for i in range(vert)]    #Now we have a list representing the colouring with colours 1,...,k
+            lh=h(l)
+            count=0                            #lh represents colouring v acted on by automoprh h
+            for m in M:                           #compare this to previous colourings (those in M) for isomoprhism
+                L=list()
+                for j in range(vert):
+                    P=(k+1)*(m[j])+(lh[j])      #If isomorphic then all vertices of one colour in m should be of the same (different) colour in lh      
+                    if P not in L:
+                        L.append(P)
+                        #check number of colours in both is equal then amend the below condition to be == that number of colours
+                if len(L)==k:
+                    count=count+1            #len(L) represents the "number of maps from colours in m to colours in lh", this should, of course, be equal to k the number of colours in the colouring 
+            if count==0:
+                M.append(l)
+                N.append(v)
+                break                              #if L iso to m then h(L) is to for all h, so break out of this loop
+    
+    return M
+
+#######################################################################################
+
+def SudoCond():
+    "Creates a list of triples, defined by the user, describing the colouring conditions on the sudoku"
+    C=list()
+    
+    ##
+    ##
+    #Enter triples of the form (x,y,z) where x is the row, y is the column and z is the colour. Example:
+    #C.append((1,0,3),(2,2,1)) will cause the cell in the 2nd row and 1st column to be coloured with 3 and the cell in the 3rd row and 3rd column to be coloured with 1
+    #Take care of the following:
+    # - Rows and columns are numbered from 0; entering a row/column combination out of range will result in an error
+    # - Colours are numbered from 0 as well; entering a colour outside of the legitimate range will result in an error
+    # - Make sure to separate all triples with commas; C is supposed to be a list of triples
+    ##
+    ##
+        
+    C.append((0,0,0))
+    C.append((0,1,1))
+    C.append((1,0,2))
+    C.append((1,1,3))
+    #C.append((2,0,1))
+    #C.append((2,1,0))
+    #C.append((3,0,3))
+    #C.append((3,1,2))
+    return(C)
+
+#####################################################################################
+
+def genCond():
+    "Sets conditions for the partial colouring of a general graph"
+    C=list()
+    
+    ##
+    ##
+    #Enter tuples of the form (vertex,colour). Example:
+    #(3,4) will cause the 3rd vertex of graph G to be coloured with colour 4
+    # - Note that the graph vertices are numbered from 0, the colours are also numbered from 0
+    # - Entering a colour or vertex outside of the range of the graph will result in an error
+    # - Take care to enter the information in tuples, separated by commas
+    ##
+    ##
+    
+    C.append((3,2))
+    
+    return(C)
+
+#####################################################################################
+
+def IsoCol(puzzle):
+    "Takes a graph (fed in by function) and a colour, from user, to return the number of proper colourings up to isomorphism. The user may input conditions in the function Cond()"
+    if puzzle==0:
+        size=2        #size of the side of a subgrid (e.g. 3 for a 9x9 Sudoku)
+        colours=size**2
+        G=sudoku(size)
+        cond=SudoCond()     #this will return a list of triples denoting conditions in the cells of Sudoku
+    elif puzzle==1:
+        G=kakuro()
+    elif puzzle==2:
+        G=Graph({0: [1,3,4], 1: [2,3,4], 2: [4,5], 3: [4], 4: [5]})    #test graph
+        colours=4    #user defined
+        cond=genCond()
+        
+    Nmain=G.num_verts()    
+    Smain=PolynomialRing(QQ,Nmain,"x")    #Sets up the ring used in the colouring functions, just for the sake of output later
+            
+    if puzzle==0:
+        variety=proper_col(G,size,cond)        #Returns the variety denoting proper colours-colourings of G given cond
+        for v in variety:
+            for i in range(size**4 - 1):
+                print '%(var)s%(ind)d%(rel)s%(key)02s'%{"var": "x","ind": i,"rel": ":","key": v[Smain.gen(i)]},
+            print '%(var)s%(ind)d%(rel)s%(key)02s'%{"var": "x","ind": size**4 - 1,"rel": ":","key": v[Smain.gen(size**4 - 1)]}
+    elif puzzle==1:
+        variety=KakuroCol(G)        #Returns the variety denoting proper colours-colourings of G given cond
+        for v in variety:
+            for i in range(11):
+                print '%(var)s%(ind)d%(rel)s%(key)02s'%{"var": "x","ind": i,"rel": ":","key": v[Smain.gen(i)]},
+            print '%(var)s%(ind)d%(rel)s%(key)02s'%{"var": "x","ind": 11,"rel": ":","key": v[Smain.gen(11)]}
+    elif puzzle==2:
+        variety=gencol(G,colours,cond)
+        for v in variety:
+            for i in range(5):
+                print '%(var)s%(ind)d%(rel)s%(key)02s'%{"var": "x","ind": i,"rel": ":","key": v[Smain.gen(i)]},
+            print '%(var)s%(ind)d%(rel)s%(key)02s'%{"var": "x","ind": 5,"rel": ":","key": v[Smain.gen(5)]}
+            
+    if puzzle==0:
+        isocol=col_uptoiso(G,variety,colours)     #Returns a list of lists representing the non-isomorphic colourings of G
+        for C1 in isocol:
+            print C1
+
+######################################################################################

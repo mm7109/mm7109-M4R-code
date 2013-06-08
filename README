@@ -1,0 +1,10 @@
+The code found in this repository is the full version of code in the appendices of my M4R project (masters thesis); Applications of Grobner Basis Methods to Graph Colouring Problems, undertaken at Imperial College London during the period November 2012 to June 2013. 
+Unlike the samples in the appendices, it's not neat and contains all of my comments as well as one or two superfluous functions.
+
+The code was written in the SAGE notebook http://www.sagemath.org/
+
+If you need to contact me about this code; mm7109@ic.ac.uk
+
+Feel free to use and improve!
+
+Maksim Mijovic, June 2013
